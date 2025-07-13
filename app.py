@@ -11,7 +11,7 @@ load_dotenv()
 
 
 def get_connection():
-    return psycopg2.connect(os.getenv("${{Postgres.DATABASE_URL}}"))
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
 
 app = Flask(__name__)
