@@ -6,32 +6,24 @@ import psycopg2
 from dotenv import load_dotenv
 from flask_cors import CORS
 
-
+# Load environment variables from .env or Railway
 load_dotenv()
+
+# Use DATABASE_URL from Railway or your local .env
 
 
 def get_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
 
+# Flask app setup
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "http://localhost:5173",
+    "https://juanh-portfolio.netlify.app"
+])
 
-CORS(app, origins=["http://localhost:5173",
-     "https://juanh-portfolio.netlify.app"])
-
-# DB connection config
-DB_CONFIG = {
-    "dbname": os.getenv("PGDATABASE"),
-    "user": os.getenv("PGUSER"),
-    "password": os.getenv("PGPASSWORD"),
-    "host": os.getenv("PGHOST"),
-    "port": os.getenv("PGPORT"),
-}
-
-
-def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+# Create table if it doesn't exist
 
 
 def init_db():
@@ -49,6 +41,8 @@ def init_db():
         conn.commit()
     print("✅ PostgreSQL DB initialized")
 
+# Health check route
+
 
 @app.route('/ping')
 def ping():
@@ -58,6 +52,8 @@ def ping():
 @app.route('/')
 def home():
     return "🎬 Movie Assistant PostgreSQL backend is live!"
+
+# Add movie route
 
 
 @app.route('/add_movie', methods=['POST', 'OPTIONS'])
@@ -77,7 +73,7 @@ def add_movie():
     api_key = "b7ae81cc"
 
     try:
-        # Search OMDb to find accurate title + year
+        # Use OMDb to get accurate title and year
         search_url = f"http://www.omdbapi.com/?s={quote(title_input)}&y={year}&apikey={api_key}"
         search_data = requests.get(search_url).json()
 
@@ -91,7 +87,6 @@ def add_movie():
         movie_url = f"http://www.omdbapi.com/?t={quote(accurate_title)}&y={year}&apikey={api_key}"
         result = requests.get(movie_url).json()
         poster = result.get("Poster")
-
         if poster and poster != "N/A":
             image_url = poster
 
@@ -106,14 +101,17 @@ def add_movie():
                 if c.fetchone():
                     return jsonify({"message": "Movie already exists."}), 409
 
-                c.execute(
-                    "INSERT INTO movies (category, title, year, image_url) VALUES (%s, %s, %s, %s)",
-                    (category, title_input, year, image_url)
-                )
+                c.execute("""
+                    INSERT INTO movies (category, title, year, image_url)
+                    VALUES (%s, %s, %s, %s)
+                """, (category, title_input, year, image_url))
                 conn.commit()
+
         return jsonify({"message": "✅ Movie added!"})
     except Exception as e:
         return jsonify({"message": f"Database error: {str(e)}"}), 500
+
+# Get movies by category
 
 
 @app.route('/get_movies/<category>', methods=['GET', 'OPTIONS'])
@@ -126,15 +124,16 @@ def get_movies(category):
         with get_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    "SELECT title, image_url FROM movies WHERE category = %s", (
-                        category,)
-                )
+                    "SELECT title, image_url FROM movies WHERE category = %s", (category,))
                 results = c.fetchall()
                 movies = [{"title": row[0], "image_url": row[1]}
                           for row in results]
+
         return jsonify({"movies": movies})
     except Exception as e:
         return jsonify({"message": f"Fetch error: {str(e)}"}), 500
+
+# Delete movie(s)
 
 
 @app.route('/delete_movie', methods=['POST', 'OPTIONS'])
@@ -154,16 +153,20 @@ def delete_movie():
             with conn.cursor() as c:
                 if title:
                     c.execute(
-                        "DELETE FROM movies WHERE category = %s AND LOWER(title) = LOWER(%s)", (category, title))
+                        "DELETE FROM movies WHERE category = %s AND LOWER(title) = LOWER(%s)",
+                        (category, title)
+                    )
                 else:
                     c.execute(
                         "DELETE FROM movies WHERE category = %s", (category,))
                 conn.commit()
+
         return jsonify({"message": "✅ Movie(s) deleted."})
     except Exception as e:
         return jsonify({"message": f"Delete error: {str(e)}"}), 500
 
 
+# Run app
 if __name__ == '__main__':
     init_db()
     port = int(os.environ.get("PORT", 5000))
