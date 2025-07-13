@@ -1,15 +1,19 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 import os
 import requests
 from urllib.parse import quote
 import psycopg2
 from dotenv import load_dotenv
+from flask_cors import CORS
+
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+CORS(app, origins=["http://localhost:5173",
+     "https://juanh-portfolio.netlify.app"])
 
 # DB connection config
 DB_CONFIG = {
