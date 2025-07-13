@@ -9,7 +9,7 @@ from flask_cors import CORS
 # Load environment variables from .env or Railway
 load_dotenv()
 
-# Use DATABASE_URL from Railway or your local .env
+# Use DATABASE_URL from Railway or your local .envdd
 
 
 def get_connection():
