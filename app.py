@@ -47,13 +47,10 @@ def add_movie():
         return jsonify({"message": "Category and title are required."}), 400
 
     image_url = ""
-    api_key = "b7ae81cc"  # Replace with your OMDb key
-    safe_name = title_input.replace(
-        " ", "_").replace(":", "").replace("/", "-")
-    folder_path = "images/movie images"
-    os.makedirs(folder_path, exist_ok=True)
+    api_key = "b7ae81cc"  # Replace with your own OMDb key
 
     try:
+        # Search OMDb for accurate title/year
         search_url = f"http://www.omdbapi.com/?s={quote(title_input)}&y={year}&apikey={api_key}"
         search_response = requests.get(search_url)
         search_data = search_response.json()
@@ -64,19 +61,14 @@ def add_movie():
             accurate_title = best_match["Title"]
             year = best_match["Year"]
 
+        # Fetch full movie details
         movie_url = f"http://www.omdbapi.com/?t={quote(accurate_title)}&y={year}&apikey={api_key}"
         movie_response = requests.get(movie_url)
         result = movie_response.json()
 
-        poster = result.get("Poster")
-        if poster and poster != "N/A":
-            poster_data = requests.get(poster).content
-            file_name = f"{safe_name}_{year}.jpg"
-            full_path = os.path.join(folder_path, file_name)
-            with open(full_path, "wb") as f:
-                f.write(poster_data)
-            # URL-safe
-            image_url = f"/images/movie%20images/{quote_plus(file_name)}"
+        # Store OMDb image URL directly (no local saving)
+        if result.get("Poster") and result["Poster"] != "N/A":
+            image_url = result["Poster"]
 
     except Exception as e:
         print(f"Error fetching poster: {e}")
