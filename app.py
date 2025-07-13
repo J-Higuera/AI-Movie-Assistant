@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 import os
 import sqlite3
 import requests
-from urllib.parse import quote
+from urllib.parse import quote, quote_plus
 
 app = Flask(__name__)
-CORS(app, resources={
-     r"/*": {"origins": "https://j-higuera.github.io"}}, supports_credentials=True)
+CORS(app)  # Allow all origins for now
 
 DATABASE = 'movies.db'
 
@@ -24,9 +23,14 @@ def init_db():
         conn.commit()
 
 
+@app.route('/ping')
+def ping():
+    return jsonify({"status": "ok"})
+
+
 @app.route('/')
 def home():
-    return "🎬 Movie Database (local version) is running!"
+    return "🎬 Movie Database backend is running!"
 
 
 @app.route('/add_movie', methods=['POST', 'OPTIONS'])
@@ -71,7 +75,8 @@ def add_movie():
             full_path = os.path.join(folder_path, file_name)
             with open(full_path, "wb") as f:
                 f.write(poster_data)
-            image_url = f"/images/movie images/{file_name}"
+            # URL-safe
+            image_url = f"/images/movie%20images/{quote_plus(file_name)}"
 
     except Exception as e:
         print(f"Error fetching poster: {e}")
@@ -123,8 +128,8 @@ def delete_movie():
     with sqlite3.connect(DATABASE) as conn:
         c = conn.cursor()
         if title:
-            c.execute("DELETE FROM movies WHERE category = ? AND LOWER(title) = LOWER(?)",
-                      (category, title))
+            c.execute(
+                "DELETE FROM movies WHERE category = ? AND LOWER(title) = LOWER(?)", (category, title))
         else:
             c.execute("DELETE FROM movies WHERE category = ?", (category,))
         conn.commit()
@@ -133,7 +138,6 @@ def delete_movie():
 
 
 @app.route('/images/movie images/<filename>')
-@cross_origin()
 def serve_movie_image(filename):
     return send_from_directory('images/movie images', filename)
 
